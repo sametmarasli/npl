@@ -1,9 +1,11 @@
-# Documentation
+# 💰npl 
 
 A platform for data analytics in the NPL business.
-Install the package with:
-    pip install -e .
 
+Install the package with:
+
+    pip install -e .
+# Documentation
 ## BaseReader
     convert data to pickle and write to interim folder
     read pickle file from interim folder
