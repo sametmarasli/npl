@@ -12,11 +12,11 @@ pd.options.display.max_columns = 99
 
 #%%
 class BusinessTransformer():
-    date_formats = ["%Y-%m-%d","%Y-%d-%m","%d-%m-%Y","%m-%d-%mY", "%Y/%m/%d","%Y/%d/%m","%d/%m/%Y","%m/%d/%mY"]
 
-    def __init__(self, raw_data={}):
-        self.raw_data = raw_data
-        self.data = raw_data.copy()
+
+    def __init__(self, data):
+        self.raw_data = data
+        self.data = data.copy()
 
     def _tame_text(self, text):
         text = text.lower()
@@ -27,76 +27,35 @@ class BusinessTransformer():
         text = text.strip('_')
         text = '_'.join([t for t in text.split('_') if len(t)>0])
         return text
-  
     
-    def tame_colnames(self, X_raw):
-        X = X_raw.copy()        
+    def map_keep_columns(self, config_file):
+        for name_i , mapper_i in config_file.items():
+            self.data[name_i] = self.data[name_i].rename(columns=mapper_i)\
+                [mapper_i.values()]\
+                .drop_duplicates()\
+                .reset_index(drop=True) 
 
-        # clean duplicated colnames
-        column_names = X.columns
-        new_column_names = []
-        for column_name in column_names:
-            if column_name not in new_column_names:
-                k = 1
-                new_column_names.append(column_name)
-            else:
-                new_column_names.append(column_name+f'_{k}')
-                k += 1
-        X.columns = new_column_names
-        # tame letters
-        map_colnames = {col:self._tame_text(col) for col in  X.columns}
-        X =  X.rename(columns=map_colnames)
+    def map_column_values(self, config_file):
+        for name_i , list_map in config_file.items():
+            for dict_map_i in list_map:
+                for column_name,map_i in dict_map_i.items():
+                    assert column_name in self.data[name_i].columns, 'Column does not exist in the data'
+                    self.data[name_i][column_name] = self.data[name_i][column_name].replace(map_i)
 
-        return X
+    def map_scraped_column_values(self, config_file):
 
-    @classmethod
-    def d_tame_colnames(self,cls,data_dict):
-        assert isinstance(data_dict,dict), "Input must be a dictionary"
-        self.data = {}
-        for name_i,df_i in data_dict.items():
-            df_i_new = cls().tame_colnames(df_i)
-            self.data[name_i] = df_i_new
-        return self.data
-
-
-    def tame_dates(self, X_raw, mappings):
-        X = X_raw.copy()
-        for colname, date_format in mappings.items():
-            try:
-                X[colname] = pd.to_datetime(X[colname],format=date_format,errors='coerce')
-            except:
-                pass
-        return X
-
-    def tame_strings(self, X_raw):
-        X = X_raw.copy()
-        X = X.fillna('NULL').applymap(lambda x: x.lower().strip()).replace('null',np.nan)
-        return X
-
-    def map_column_names(self, X_raw, mappings={}):
-        X = X_raw.copy()
-        X = X.rename(columns=mappings)[mappings.values()]
-        return X
-
-    def map_column_values(self, X_raw, mappings):
-        X = X_raw.copy()
-        for colname, mapping_i in mappings.items():
-            X[f"MapV_{colname}"] = X[colname].replace(mapping_i)
-        return X
-
-    def map_scraped_column_values(self, X_raw, mappings):
-        X = X_raw.copy()
-        
         def scrape_text(text, mapper):
             list_mapping = [y for x,y in mapper.items() if x in text]
             if len(list_mapping)>0:
                 return(list_mapping[0])
             return text
 
-        for colname, mapping_i in mappings.items():
-            X[f"MapS_{colname}"] = X[colname].fillna('null').apply(lambda x: scrape_text(x, mapper=mapping_i))
+        for name_i , list_map in config_file.items():
+                for dict_map_i in list_map:
+                    for column_name,map_i in dict_map_i.items():
+
+                        self.data[name_i][column_name]= self.data[name_i][column_name].fillna('null').apply(lambda x: scrape_text(x, mapper=map_i))
         
-        return X
 
     def map_by_threshold(self, X, mappings):
 
@@ -114,7 +73,7 @@ class BusinessTransformer():
             df_i_new = cls().tame_colnames(df_i)
             tamed_data_dic[name_i] = df_i_new
         return tamed_data_dic
-
+ 
     @classmethod
     def tame_one(cls,X):
         assert isinstance(X,pd.DataFrame), "Input must be a pd.DataFrame"

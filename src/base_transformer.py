@@ -46,26 +46,16 @@ class BaseTransformer():
             df_i_new =  df_i_new.rename(columns=map_colnames)
             self.data[name_i] = df_i_new
         
-
     
-    def d_tame_colnames(self):
-        for name_i,df_i in self.data.items():
-            df_i_new = BaseTransformer().tame_colnames(df_i)
-            self.data[name_i] = df_i_new
-        return self.data
+    def reformat_dates(self, config_file):
+        for name_i ,dict_map_i in config_file.items():
+            for colname_i, date_format_i in dict_map_i.items():
+                self.data[name_i][colname_i] = pd.to_datetime(self.data[name_i][colname_i], format=date_format_i ,errors='coerce')
 
+    def reformat_dtypes(self, config_file):
+        for name_i ,dict_map_i in config_file.items():
+            self.data[name_i] = self.data[name_i].astype(dict_map_i)
 
-    def drop_columns(self):
-        pass
-    
-    def tame_dates(self, X_raw, mappings):
-        X = X_raw.copy()
-        for colname, date_format in mappings.items():
-            try:
-                X[colname] = pd.to_datetime(X[colname],format=date_format,errors='coerce')
-            except:
-                pass
-        return X
 
     def tame_strings(self, X_raw):
         X = X_raw.copy()
